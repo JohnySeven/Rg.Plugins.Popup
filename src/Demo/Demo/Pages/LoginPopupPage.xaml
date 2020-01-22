@@ -87,6 +87,7 @@
               x:TypeArguments="ImageSource"
               Android="close_circle_button.png"
               iOS="close_circle_button.png"
+              
               WinPhone="Assets/close_circle_button.png"/>
           </Image.Source>
         </Image>

@@ -18,7 +18,10 @@ namespace Demo.Pages
             PopupNavigation.Instance.Popping += (sender, e) => Debug.WriteLine($"[Popup] Popping: {e.Page.GetType().Name}");
             PopupNavigation.Instance.Popped += (sender, e) => Debug.WriteLine($"[Popup] Popped: {e.Page.GetType().Name}");
 
-            _loginPopup = new LoginPopupPage();
+            _loginPopup = new LoginPopupPage()
+            {
+                IsAnimationEnabled = false
+            };
         }
 
         private async void OnOpenPupup(object sender, EventArgs e)

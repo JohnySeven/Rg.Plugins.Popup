@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Xamarin.Forms;
 using Xamarin.Forms.Internals;
 using XPlatform = Xamarin.Forms.Platform.WPF.Platform;
+using System.Windows.Media;
 
 [assembly: Dependency(typeof(PopupPlatformWPF))]
 namespace Rg.Plugins.Popup.WPF.Impl
@@ -34,33 +35,27 @@ namespace Rg.Plugins.Popup.WPF.Impl
             //TODO onBackPressed subscribe
         }
 
-        //private async void OnBackRequested(object sender, BackRequestedEventArgs e)
-        //{
-        //    var lastPopupPage = PopupNavigationInstance.PopupStack.LastOrDefault();
-
-        //    if (lastPopupPage != null)
-        //    {
-        //        var isPrevent = lastPopupPage.IsBeingDismissed || lastPopupPage.SendBackButtonPressed();
-
-        //        if (!isPrevent)
-        //        {
-        //            e.Handled = true;
-        //            await PopupNavigationInstance.PopAsync();
-        //        }
-        //    }
-        //}
-
         public async Task AddAsync(PopupPage page)
         {
             page.Parent = Application.Current.MainPage;
 
-            var popup = new System.Windows.Controls.Primitives.Popup();
+            var popup = new System.Windows.Window()
+            {
+                AllowsTransparency = true,
+                Background = Brushes.Transparent,
+                BorderThickness = new System.Windows.Thickness(),
+                WindowStyle = System.Windows.WindowStyle.None,
+                ShowInTaskbar = false,
+                Owner = System.Windows.Application.Current.MainWindow
+            };
+
             var renderer = (PopupPageRenderer)page.GetOrCreateRenderer();
 
             renderer.Prepare(popup);
-            popup.Child = renderer.Control;
-            popup.IsOpen = true;
+            popup.Content = renderer.Control;
             page.ForceLayout();
+
+            popup.Show();
 
             await Task.Delay(5);
         }
@@ -76,8 +71,8 @@ namespace Rg.Plugins.Popup.WPF.Impl
 
                 Cleanup(page);
                 page.Parent = null;
-                popup.Child = null;
-                popup.IsOpen = false;
+                popup.Content = null;
+                popup.Close();
             }
 
             await Task.Delay(5);
@@ -91,8 +86,7 @@ namespace Rg.Plugins.Popup.WPF.Impl
             var elementRenderer = XPlatform.GetRenderer(element);
             foreach (Element descendant in element.Descendants())
             {
-                var child = descendant as VisualElement;
-                if (child != null)
+                if (descendant is VisualElement child)
                 {
                     var childRenderer = XPlatform.GetRenderer(child);
                     if (childRenderer != null)
