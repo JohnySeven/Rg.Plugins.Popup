@@ -6,10 +6,9 @@ using System.Windows;
 using XF = Xamarin.Forms;
 using Xamarin.Forms.Internals;
 using Xamarin.Forms.Platform.WPF;
-using WinPopup = System.Windows.Controls.Primitives.Popup;
 using Application = System.Windows.Application;
-using WinPrimitives = System.Windows.Controls.Primitives;
-using System.Windows.Controls.Primitives;
+using System.Windows.Controls;
+using System.Windows.Media;
 
 [assembly: ExportRenderer(typeof(PopupPage), typeof(PopupPageRenderer))]
 namespace Rg.Plugins.Popup.WPF.Renderers
@@ -17,7 +16,7 @@ namespace Rg.Plugins.Popup.WPF.Renderers
     [Preserve(AllMembers = true)]
     public class PopupPageRenderer : PageRenderer
     {
-        internal Window Container { get; private set; }
+        internal Grid Container { get; private set; }
 
         private PopupPage CurrentElement => (PopupPage)Element;
 
@@ -26,90 +25,75 @@ namespace Rg.Plugins.Popup.WPF.Renderers
         {
 
         }
-        
-        internal void Prepare(Window container)
+
+        private Grid InjectGrid()
         {
-            Container = container;
+            var grid = new Grid()
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch
+            };
+            var mainWindow = Application.Current.MainWindow;
+            var border = VisualTreeHelper.GetChild(mainWindow, 0) as Border;
+            var mainGrid = border.Child as Grid;
+            Grid.SetRow(grid, 1);
+            Grid.SetRowSpan(grid, 2);
+            mainGrid.Children.Add(grid);
+
+            return grid;
+        }
+
+        protected override void OnElementChanged(ElementChangedEventArgs<XF.Page> e)
+        {
+            base.OnElementChanged(e);
+
+            if (e.OldElement != null)
+            {
+                Destroy();
+            }
+
+            Container = InjectGrid();
+            Container.Children.Add(Control);
             CurrentElement.CloseWhenBackgroundIsClicked = true;
-
-            var window = Application.Current.MainWindow ?? throw new InvalidOperationException("Wpf MainWindow must be initialized!");
-
-            window.SizeChanged += OnSizeChanged;
-            window.LocationChanged += OnLocationChanged;
-            window.StateChanged += OnMainWindowStateChanged;
-
-            container.Owner = window;
-
-            UpdatePopupLocation(container, window);
-            UpdateElementSize(container);
+            Container.SizeChanged += Container_SizeChanged;
+            UpdateElementSize();
         }
 
-        private void OnMainWindowStateChanged(object sender, EventArgs e)
+        private void Container_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            //if(sender is Window window)
-            //{
-            //    Container.IsOpen = window.WindowState != WindowState.Minimized;
-            //}
+            UpdateElementSize();
         }
 
-        private static void UpdatePopupLocation(Window container, Window window)
+        private void UpdateElementSize()
         {
-            container.Width = window.Width;
-            container.Height = window.Height;
-            container.Left = window.Left;
-            container.Top = window.Top;
+            if (Container.ActualWidth > 0 && Container.ActualHeight > 0)
+            {
+                CurrentElement.BatchBegin();
+                CurrentElement.Layout(new XF.Rectangle(0.0, 0.0, Container.ActualWidth, Container.ActualHeight));
+                CurrentElement.BatchCommit();
+            }
         }
 
-        private void OnLocationChanged(object sender, EventArgs e)
-        {
-            UpdatePopupLocation(Container, Application.Current.MainWindow);
-            UpdateElementSize(Container);
-        }
+        //protected override void Dispose(bool disposing)
+        //{
+        //    base.Dispose(disposing);
+        //    if(disposing)
+        //    {
+        //        Destroy();
+        //    }
+        //}
 
         internal void Destroy()
         {
-            Container = null;
-
-            var window = Application.Current.MainWindow;
-            if (window != null)
+            if (Container != null)
             {
-                window.SizeChanged -= OnSizeChanged;
-                window.LocationChanged -= OnLocationChanged;
-                window.StateChanged -= OnMainWindowStateChanged;
+                var parentGrid = Container.Parent as Grid;
+                parentGrid.Children.Remove(Container);
+                Container.SizeChanged -= Container_SizeChanged;
+                Container = null;
+                Element.BindingContext = null;
+
             }
-        }
-        
-        private void OnSizeChanged(object sender, SizeChangedEventArgs e)
-        {
-            UpdatePopupLocation(Container, Application.Current.MainWindow);
-            UpdateElementSize(Container);
-        }
-
-        private async void UpdateElementSize(Window popup)
-        {
-            await Task.Delay(50);
-
-            var windowBound = Application.Current.MainWindow.RestoreBounds;
-            var visibleBounds = Application.Current.MainWindow.RestoreBounds;
-
-            var top = visibleBounds.Top - windowBound.Top;
-            var bottom = windowBound.Bottom - visibleBounds.Bottom;
-            var left = visibleBounds.Left - windowBound.Left;
-            var right = windowBound.Right - visibleBounds.Right;
-
-            top = Math.Max(0, top);
-            bottom = Math.Max(0, bottom);
-            left = Math.Max(0, left);
-            right = Math.Max(0, right);
-
-            var systemPadding = new Xamarin.Forms.Thickness(left, top, right, bottom);
-
-            CurrentElement.BatchBegin();
-
-            CurrentElement.Padding = systemPadding;
-            CurrentElement.Layout(new XF.Rectangle(0.0, 0.0, popup.Width, popup.Height));
-
-            CurrentElement.BatchCommit();
         }
     }
 }

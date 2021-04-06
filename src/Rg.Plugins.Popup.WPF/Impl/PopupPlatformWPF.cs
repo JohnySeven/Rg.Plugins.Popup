@@ -39,43 +39,24 @@ namespace Rg.Plugins.Popup.WPF.Impl
         {
             page.Parent = Application.Current.MainPage;
 
-            var popup = new System.Windows.Window()
-            {
-                AllowsTransparency = true,
-                Background = Brushes.Transparent,
-                BorderThickness = new System.Windows.Thickness(),
-                WindowStyle = System.Windows.WindowStyle.None,
-                ShowInTaskbar = false,
-                Owner = System.Windows.Application.Current.MainWindow
-            };
-
             var renderer = (PopupPageRenderer)page.GetOrCreateRenderer();
-
-            renderer.Prepare(popup);
-            popup.Content = renderer.Control;
             page.ForceLayout();
-
-            popup.Show();
-
             await Task.Delay(5);
         }
 
-        public async Task RemoveAsync(PopupPage page)
+        public Task RemoveAsync(PopupPage page)
         {
             var renderer = (PopupPageRenderer)page.GetOrCreateRenderer();
-            var popup = renderer.Container;
+            var popupGrid = renderer.Container;
 
-            if (popup != null)
+            if (popupGrid != null)
             {
-                renderer.Dispose();
-
                 Cleanup(page);
                 page.Parent = null;
-                popup.Content = null;
-                popup.Close();
+                renderer.Destroy();
             }
 
-            await Task.Delay(5);
+            return Task.CompletedTask;
         }
 
         internal static void Cleanup(VisualElement element)
@@ -88,6 +69,7 @@ namespace Rg.Plugins.Popup.WPF.Impl
             {
                 if (descendant is VisualElement child)
                 {
+                    descendant.BindingContext = null;
                     var childRenderer = XPlatform.GetRenderer(child);
                     if (childRenderer != null)
                     {
